@@ -6,21 +6,20 @@ def show_gstin(app):
     from services import gstin
     app._clear()
     app._title("GSTIN Validator")
-    row = ctk.CTkFrame(app.content, fg_color="transparent")
-    row.pack(fill="x", pady=8)
-    ent = ctk.CTkEntry(row, placeholder_text="Enter 15-char GSTIN",
-                       width=260)
-    ent.pack(side="left", padx=4)
-    result = theme.h2(app.content, "")
-    result.pack(anchor="w", pady=8)
+    bar = ctk.CTkFrame(app.content, fg_color="transparent")
+    bar.pack(fill="x", pady=(0, 8))
+    entry = ctk.CTkEntry(bar, placeholder_text="Enter GSTIN", width=260)
+    entry.pack(side="left", padx=3)
+    out = ctk.CTkLabel(app.content, text="", justify="left")
+    out.pack(anchor="w", pady=8)
 
-    def check():
-        r = gstin.validate(ent.get())
-        if r["valid"]:
-            result.configure(
-                text="\u2705 %s  |  State code: %s  PAN: %s"
-                % (r["reason"], r["state_code"], r["pan"]))
+    def do():
+        r = gstin.validate(entry.get())
+        if r["ok"]:
+            out.configure(text="✅ %s  (state code %s)"
+                          % (r["reason"], r.get("state_code", "")))
         else:
-            result.configure(text="\u274c " + r["reason"])
+            out.configure(text="❌ " + r["reason"])
+        app.set_status("Checked GSTIN")
 
-    theme.primary_button(row, "Validate", check).pack(side="left", padx=6)
+    theme.primary_button(bar, "Validate", do).pack(side="left", padx=6)

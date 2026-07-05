@@ -7,33 +7,31 @@ def show_mrp(app):
     app._clear()
     app._title("MRP / Tax-Inclusive Billing")
     form = ctk.CTkFrame(app.content, fg_color="transparent")
-    form.pack(fill="x", pady=8)
-    mrpv = ctk.CTkEntry(form, placeholder_text="MRP (incl. tax)",
-                        width=130)
-    mrpv.pack(side="left", padx=3)
-    ratev = ctk.CTkEntry(form, placeholder_text="GST %", width=80)
-    ratev.pack(side="left", padx=3)
-    qtyv = ctk.CTkEntry(form, placeholder_text="Qty", width=70)
-    qtyv.pack(side="left", padx=3)
-    interv = ctk.StringVar(value="Intra")
-    ctk.CTkOptionMenu(form, variable=interv,
-                      values=["Intra", "Inter"], width=80).pack(
-        side="left", padx=3)
-    out = theme.h2(app.content, "")
+    form.pack(fill="x", pady=(0, 8))
+    mrp_e = ctk.CTkEntry(form, placeholder_text="MRP", width=100)
+    mrp_e.pack(side="left", padx=3)
+    gst_e = ctk.CTkEntry(form, placeholder_text="GST %", width=80)
+    gst_e.pack(side="left", padx=3)
+    qty_e = ctk.CTkEntry(form, placeholder_text="Qty", width=80)
+    qty_e.pack(side="left", padx=3)
+    scope = ctk.CTkOptionMenu(form, values=["Intra-state", "Inter-state"])
+    scope.pack(side="left", padx=3)
+    out = ctk.CTkLabel(app.content, text="", justify="left")
     out.pack(anchor="w", pady=8)
 
-    def calc():
+    def do():
         try:
-            inter = interv.get() == "Inter"
-            r = mrp.line_from_mrp(mrpv.get() or 0, qtyv.get() or 1,
-                                  ratev.get() or 0, inter)
-            out.configure(
-                text=("Taxable: %.2f | CGST: %.2f | SGST: %.2f | "
-                      "IGST: %.2f | Gross (MRP): %.2f"
-                      % (r["taxable"], r["cgst"], r["sgst"],
-                         r["igst"], r["gross"])))
+            inter = scope.get() == "Inter-state"
+            qty = float(qty_e.get() or 1)
+            r = mrp.line_from_mrp(float(mrp_e.get()), qty,
+                                  float(gst_e.get() or 0), inter)
+            out.configure(text=(
+                "Taxable: %.2f\nCGST: %.2f   SGST: %.2f   IGST: %.2f\n"
+                "Gross (=MRP×Qty): %.2f"
+                % (r["taxable"], r["cgst"], r["sgst"], r["igst"],
+                   r["gross"])))
+            app.set_status("Computed MRP breakup")
         except Exception as e:
             out.configure(text="Error: " + str(e))
 
-    theme.primary_button(form, "Compute", calc).pack(side="left",
-                                                     padx=6)
+    theme.primary_button(form, "Compute", do).pack(side="left", padx=6)

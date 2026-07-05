@@ -1,34 +1,41 @@
-# services/gstin.py -- GSTIN format + checksum validation
+# services/gstin.py -- standalone GSTIN format + checksum validator
 import re
 
-_GSTIN_RE = re.compile(
+_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_FORMAT = re.compile(
     r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")
-_CODES = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
-def _check_digit(first14):
-    n = len(_CODES)
-    factor = 2
+def check_digit(first14):
+    """Official GSTIN check-digit for the first 14 characters."""
+    first14 = (first14 or "").upper()
     total = 0
-    for ch in reversed(first14):
-        code = _CODES.index(ch)
-        addend = factor * code
-        factor = 1 if factor == 2 else 2
-        addend = (addend // n) + (addend % n)
-        total += addend
-    return _CODES[(n - (total % n)) % n]
+    for i, ch in enumerate(first14[:14]):
+        v = _CHARS.find(ch)
+        if v < 0:
+            return "?"
+        factor = 2 if (i % 2) else 1
+        prod = v * factor
+        total += (prod // 36) + (prod % 36)
+    return _CHARS[(36 - (total % 36)) % 36]
+
+
+def is_valid(gstin):
+    g = (gstin or "").strip().upper()
+    if not _FORMAT.match(g):
+        return False
+    return g[14] == check_digit(g[:14])
 
 
 def validate(gstin):
+    """Return {ok, reason, [state_code]} for UI use."""
     g = (gstin or "").strip().upper()
-    if len(g) != 15:
-        return {"valid": False, "reason": "GSTIN must be 15 characters"}
-    if not _GSTIN_RE.match(g):
-        return {"valid": False, "reason": "Invalid GSTIN format"}
-    expected = _check_digit(g[:14])
-    if expected != g[14]:
-        return {"valid": False,
-                "reason": "Checksum failed (expected last char '%s')"
-                % expected}
-    return {"valid": True, "reason": "Valid GSTIN",
-            "state_code": g[:2], "pan": g[2:12]}
+    if not _FORMAT.match(g):
+        return {"ok": False,
+                "reason": "Bad format (need 15 chars: 2-digit state, "
+                          "10-char PAN, entity, Z, check digit)"}
+    if g[14] != check_digit(g[:14]):
+        return {"ok": False,
+                "reason": "Checksum mismatch (expected %s)"
+                          % check_digit(g[:14])}
+    return {"ok": True, "reason": "Valid GSTIN", "state_code": g[:2]}
